@@ -52,7 +52,7 @@ def download_all_htmls():
         time.sleep(0.5)
     f = open("htmls.txt", "w")
     for ahtml in htmls:  # 将所得所有url导入txt文档中
-        f.write('http://www.nhc.gov.cn/')
+        f.write('http://www.nhc.gov.cn')
         f.write(ahtml + '\n')
     f.close()
     return htmls
