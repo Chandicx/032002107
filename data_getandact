@@ -1,0 +1,226 @@
+import re
+import time
+from selenium import webdriver
+from selenium.webdriver.support import expected_conditions as EC
+import xlwt
+from openpyxl import Workbook
+from bs4 import BeautifulSoup  # 解析requests请求到的HTML页面
+import requests  # 请求目标网页
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from lxml import etree
+# headers = {
+#     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.66 Safari/537.36'}
+chrome_options = Options()  # 实例化Option对象
+chrome_options.add_argument('--headless')  # 把Chrome浏览器设置为静默模式
+chrome_options.page_load_strategy = 'eager'
+chrome_options.add_argument('--disable-gpu')
+class NoMatch:  #防止search返回None
+    @staticmethod
+    def group():
+        return ''
+
+def get_request(url):
+    while 1:
+        driver = webdriver.Chrome(options=chrome_options)  # 设置引擎为Chrome，在后台默默运行
+        driver.get(url)
+        EC_title = EC.title_contains('日')
+        print(EC_title(driver))
+        if EC_title(driver):
+            break
+        print('ERROR')
+        driver.close()
+
+    print('succeed!')
+    # print(con.text)
+    return driver.page_source
+
+def deal_data():
+    datas = open("data.txt", "w")
+    htmls=[]
+    f=open("htmls.txt","r",encoding='utf-8')#读取txt文件中存储的网址
+    line=f.readline()
+    while line:
+
+        htmls.append(line.rstrip('\n'))#输入网页时不能带换行符
+        line=f.readline()
+    f.close()
+    iu=0
+    for urls in htmls:
+
+        iu=iu+1
+        if iu>972:
+            break
+        summary= len(htmls)
+        print(urls)
+        print('爬取网址',iu,'共有',summary,'个')
+        url = urls
+        con = get_request(url)   #爬取爬取
+
+        texts = con
+        result = BeautifulSoup(texts, 'lxml')  # html.parser
+        # print(result)
+
+        div1 = result.find('title')
+        print(div1)
+        div_date=re.search('[0-9]+月[0-9]+日',str(div1))
+        print(div_date.group())#成功提取日期
+
+        div2 = result.find('div', attrs={'class': 'con'})
+        #print(div2)
+        div_def = div2.text.replace('\xa0' * 4, '\n\n\xa0\xa0')
+        div_def = div_def.replace('（注：媒体引用时，请标注“信息来自国家卫生健康委员会官方网站”。）','')
+        div_def = div_def.replace('分享到','')
+        div_x=(re.search('新增确诊病例([\s\S]*?)\n',str(div_def)) or NoMatch)# res=''
+        div_x=(re.search('本土([\s\S]*?)）',str(div_x.group())) or NoMatch) # res=''
+        print(div_x.group())
+        div_bentuxinzeng=re.findall('河北[0-9]+|山西[0-9]+|辽宁[0-9]+|吉林[0-9]+|黑龙江[0-9]+|江苏[0-9]+|浙江[0-9]+|安徽[0-9]+|福建[0-9]+|江西[0-9]+|山东[0-9]+|河南[0-9]+|湖北[0-9]+|湖南[0-9]+|广东[0-9]+|海南[0-9]+|四川[0-9]+|贵州[0-9]+|云南[0-9]+|陕西[0-9]+|甘肃[0-9]+|青海[0-9]+|台湾[0-9]+|内蒙古[0-9]+|广西[0-9]+|西藏[0-9]+|宁夏[0-9]+|新疆[0-9]+|北京[0-9]+|天津[0-9]+|上海[0-9]+|重庆[0-9]+|香港[0-9]+|澳门[0-9]+|例[0-9]+例（在[\s\S]*?）',str(div_x.group()))
+
+        print(div_bentuxinzeng)
+        numlist = re.findall('[0-9]+', str(div_bentuxinzeng))  ##分离列表
+        prolist = re.findall(
+            '河北|山西|辽宁|吉林|黑龙江|江苏|浙江|安徽|福建|江西|山东|河南|湖北|湖南|广东|海南|四川|贵州|云南|陕西|甘肃|青海|台湾|内蒙古|广西|西藏|宁夏|新疆|北京|天津|上海|重庆|香港|澳门|台湾',
+            str(div_bentuxinzeng))
+        pro1list=(prolist)
+        num1list=(numlist)
+        print(pro1list)
+        print(num1list)
+
+        for i in range(len(pro1list)):#将数据写入txt
+            datas.write(div_date.group())
+            #datas.write('新增确诊')
+            datas.write(',')
+            datas.write(pro1list[i])
+            # datas.write(',')
+            # datas.write('新增确诊')
+            datas.write(',')
+            datas.write(num1list[i]+'\n')
+        # nplist1=list(zip(num1list,pro1list))
+        # print(nplist1)
+
+        div_x = (re.search('新增无症状([\s\S]*?)\n', str(div_def)) or NoMatch)# res=''
+        div_x = (re.search('本土([\s\S]*?)）', str(div_x.group())) or NoMatch)  # res=''
+        print(div_x.group())
+        div_wuzhengzhuangxinzeng=re.findall('河北[0-9]+|山西[0-9]+|辽宁[0-9]+|吉林[0-9]+|黑龙江[0-9]+|江苏[0-9]+|浙江[0-9]+|安徽[0-9]+|福建[0-9]+|江西[0-9]+|山东[0-9]+|河南[0-9]+|湖北[0-9]+|湖南[0-9]+|广东[0-9]+|海南[0-9]+|四川[0-9]+|贵州[0-9]+|云南[0-9]+|陕西[0-9]+|甘肃[0-9]+|青海[0-9]+|台湾[0-9]+|内蒙古[0-9]+|广西[0-9]+|西藏[0-9]+|宁夏[0-9]+|新疆[0-9]+|北京[0-9]+|天津[0-9]+|上海[0-9]+|重庆[0-9]+|香港[0-9]+|澳门[0-9]+|例[0-9]+例（在[\s\S]*?）',str(div_x.group()))
+        print(div_wuzhengzhuangxinzeng)
+        numlist = re.findall('[0-9]+', str(div_wuzhengzhuangxinzeng))  ##分离列表
+        prolist = re.findall(
+            '河北|山西|辽宁|吉林|黑龙江|江苏|浙江|安徽|福建|江西|山东|河南|湖北|湖南|广东|海南|四川|贵州|云南|陕西|甘肃|青海|台湾|内蒙古|广西|西藏|宁夏|新疆|北京|天津|上海|重庆|香港|澳门|台湾',
+            str(div_wuzhengzhuangxinzeng))
+        pro2list = (prolist)
+        num2list = (numlist)
+        print(pro2list)
+        print(num2list)
+        for i in range(len(pro2list)):
+            datas.write(div_date.group())
+            #datas.write('新增无症状')
+            datas.write(',,,')
+            datas.write(pro2list[i])
+            # datas.write(',')
+            # datas.write('新增确诊')
+            datas.write(',')
+            datas.write(num2list[i] + '\n')
+
+
+        summm1 = 0
+        summm2 = 0
+        for i in range(len(pro1list)):
+            summm1 = summm1 + int(num1list[i])
+            if int(num1list[i]) > 40:
+                datas.write(div_date.group())
+                datas.write(',,,,,,,')
+                datas.write(pro1list[i] + '省')
+                datas.write('新增本土确诊人数为：')
+                datas.write(num1list[i])
+                datas.write('。防疫形势严峻。\n')
+        for i in range(len(pro2list)):
+            summm2 = summm2 + int(num2list[i])
+            if int(num2list[i]) > 200:
+                datas.write(div_date.group())
+                datas.write(',,,,,,,')
+                datas.write(pro2list[i] + '省')
+                datas.write('新增本土无症状感染者人数为：')
+                datas.write(num2list[i])
+                datas.write('。防疫形势严峻。\n')
+        if summm1==0:
+            datas.write(div_date.group())
+            datas.write(',,,,,,,')
+            datas.write('好耶！无本土新增确诊！\n')
+        if summm2==0:
+            datas.write(div_date.group())
+            datas.write(',,,,,,,')
+            datas.write('好耶！无本土新增无症状感染者！\n')
+        if summm1 > 0:
+            datas.write(div_date.group())
+            datas.write(',,,,,,,')
+            datas.write('新增本土确诊人数为：')
+            datas.write(str(summm1))
+            if summm1 < 25:
+                datas.write('。总体态势良好。\n')
+            elif summm1 < 50:
+                datas.write('。仍有潜在危险。\n')
+            elif summm1 < 200:
+                datas.write('。形势并不乐观。\n')
+            else:
+                datas.write('。防疫形势严峻。\n')
+            if (int(num1list[0]) >= summm1 / 2):
+                datas.write(div_date.group())
+                datas.write(',,,,,,,')
+                datas.write(pro1list[0])
+                datas.write('为重点防控省份。\n')
+        if summm2 > 0:
+            datas.write(div_date.group())
+            datas.write(',,,,,,,')
+            datas.write('新增本土无症状感染者人数为：')
+            datas.write(str(summm2))
+            if summm2 < 50:
+                datas.write('。总体态势良好。\n')
+            elif summm2 < 200:
+                datas.write('。仍有潜在危险。\n')
+            elif summm2 < 1000:
+                datas.write('。形势并不乐观。\n')
+            else:
+                datas.write('。防疫形势严峻。\n')
+            if (int(num2list[0]) >= summm2 / 2):
+                datas.write(div_date.group())
+                datas.write(',,,,,,,')
+                datas.write(pro2list[0])
+                datas.write('为重点防控省份。\n')
+
+
+
+        div_x = (re.search('港澳台([\s\S]*?)\n', str(div_def)) or NoMatch)  # res=''
+        print(div_x.group())
+        div_gangaotai=re.findall('香港特别行政区[0-9]+|澳门特别行政区[0-9]+|台湾地区[0-9]+',str(div_x.group()))
+        print(div_gangaotai)
+        numlist = re.findall('[0-9]+', str(div_gangaotai))  ##分离列表
+        prolist = re.findall(
+            '香港特别行政区|澳门特别行政区|台湾地区',str(div_gangaotai))
+        pro3list = (prolist)
+        num3list = (numlist)
+        print(pro3list)
+        print(num3list)
+        for i in range(len(pro3list)):
+            datas.write(div_date.group())
+            #datas.write('累计确诊')
+            datas.write(',,,,,')
+            datas.write(pro3list[i])
+            # datas.write(',')
+            # datas.write('新增确诊')
+            datas.write(',')
+            datas.write(num3list[i] + '\n')
+
+        # datas.write(div_date.group()+'\n')
+        # datas.write('本土新增确诊\n')
+        # for province in div_bentuxinzeng:Z
+        #     datas.write(div_date.group(),',',list_pro(province),',',list_num(province),'\n')
+        # datas.write('本土新增无症状\n')
+        # for province in div_wuzhengzhuangxinzeng:
+        #     datas.write(province+'\n')
+        # datas.write('港澳台新增确诊\n')
+        # for province in div_gangaotai:
+        #     datas.write(province+'\n')
+
+        datas.write('\n')
+    datas.close()
+deal_data()
